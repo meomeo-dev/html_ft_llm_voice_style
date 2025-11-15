@@ -64,8 +64,8 @@ git commit -m "chore: setup GitHub Pages workflow"
 git push origin { DEFAULT_BRANCH }
 ```
 
-- 切换：在 GitHub 仓库 `{ OWNER }/{ REPO }` 的 Settings → Pages → Build and deployment，将 Source 修改为 `GitHub Actions`（若已为 `GitHub Actions` 则跳过）。
-- 等待：完成上述设置后再继续下一步，以便工作流能够正确部署到 Pages。
+- 提醒用户切换：在 GitHub 仓库 `{ OWNER }/{ REPO }` 的 Settings → Pages → Build and deployment，将 Source 修改为 `GitHub Actions`（若已为 `GitHub Actions` 则跳过）。
+- 等待用户回复切换结果：完成上述设置后再继续下一步，以便工作流能够正确部署到 Pages。
 
 - 触发：在推送后自动触发工作流（或在 Actions 手动 `Run workflow`）。
 - 观察：在 Actions 的 `{ WORKFLOW_NAME }` 运行页面等待 `deploy` 任务完成，记录输出的 `page_url`。
