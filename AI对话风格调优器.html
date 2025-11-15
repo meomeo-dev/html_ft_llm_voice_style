@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 对话风格调优器</title>
+    <style>
+        :root {
+            --slider-track-bg: #e0e0e0;
+            --slider-thumb-bg: #007bff;
+            --slider-fill-bg: #007bff;
+            --text-color: #333;
+            --bg-color: #f8f9fa;
+            --container-bg: #ffffff;
+            --border-color: #dee2e6;
+            --button-bg: #007bff;
+            --button-hover-bg: #0056b3;
+            --button-text-color: #fff;
+            --code-bg: #e9ecef;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .main-container {
+            max-width: 1200px;
+            margin: auto;
+            background-color: var(--container-bg);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: var(--slider-thumb-bg);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .sliders-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .category-header {
+            grid-column: 1 / -1;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--slider-thumb-bg);
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .dimension-control {
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        .dimension-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .dimension-header label {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .dimension-header .value-display {
+            font-weight: bold;
+            font-size: 1.2em;
+            color: var(--slider-thumb-bg);
+            min-width: 20px;
+            text-align: right;
+        }
+
+        .dimension-control input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: var(--slider-track-bg);
+            border-radius: 5px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .dimension-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--slider-thumb-bg);
+            border-radius: 50%;
+            border: 2px solid var(--container-bg);
+        }
+
+        .dimension-control input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: var(--slider-thumb-bg);
+            border-radius: 50%;
+            border: 2px solid var(--container-bg);
+        }
+        
+        .description-text {
+            margin-top: 0.5rem;
+            font-style: italic;
+            color: #6c757d;
+            min-height: 2.5em; /* Reserve space to prevent layout shifts */
+        }
+        
+        .actions {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        #copyButton {
+            padding: 0.8rem 1.5rem;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: var(--button-text-color);
+            background-color: var(--button-bg);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #copyButton:hover {
+            background-color: var(--button-hover-bg);
+        }
+
+        #copyMessage {
+            margin-left: 1rem;
+            color: #28a745;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        #yamlOutput {
+            width: 100%;
+            height: 300px;
+            font-family: "Courier New", Courier, monospace;
+            background-color: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 1rem;
+            box-sizing: border-box;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .presets {
+            text-align: center;
+            margin: 0.5rem 0 1.2rem;
+            gap: 0.5rem;
+        }
+        .preset-button {
+            padding: 0.5rem 1rem;
+            font-size: 0.95em;
+            font-weight: 600;
+            color: var(--button-text-color);
+            background-color: #6c757d;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 0.25rem 0.5rem;
+            transition: opacity 0.2s;
+        }
+        .preset-button:hover { opacity: 0.9; }
+
+        /* 负相关徽标样式 */
+        .invert-badge {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 1px 6px 0 6px;
+            font-size: 0.65rem;
+            line-height: 1.2;
+            border-radius: 10px;
+            background: #ff9800;
+            color: #fff;
+            font-weight: 600;
+            vertical-align: middle;
+            cursor: help;
+        }
+        /* 负相关徽标：中文(英文) */
+        .invert-badge::before { content: '负相关 (Inverse)'; }
+        .invert-badge[data-peer]::after {
+            content: '↔' attr(data-peer);
+            margin-left: 4px;
+            font-weight: 700;
+        }
+        .extra-prompts-section {
+            margin: 2rem 0 1.5rem;
+            padding: 1.2rem 1.2rem 0.8rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: #fafafa;
+        }
+        .extra-prompts-section h3 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            color: var(--slider-thumb-bg);
+        }
+        .extra-dimension-block { margin-bottom: 1.1rem; }
+        .extra-dimension-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.35rem; }
+        .extra-prompts-list { display: flex; flex-direction: column; gap: 4px; }
+        .extra-prompts-list label { font-size: 0.75rem; line-height: 1.1; cursor: pointer; }
+        .exclusive-tag { color: #d32f2f; font-weight: 600; margin-left: 4px; font-size: 0.65rem; }
+        .prompt-selected-badge { display:inline-block; background:#007bff; color:#fff; font-size:0.55rem; padding:0 4px; border-radius:4px; margin-left:4px; }
+        .extra-prompt-translation { display:block; font-size:0.72rem; color:#666; margin-left: 1.5rem; line-height:1.2; margin-top: 2px; }
+
+        /* 互斥提示（非模态） */
+        .exclusive-info {
+            margin-top: 6px;
+            font-size: 0.72rem;
+            color: #856404;
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            border-radius: 4px;
+            padding: 6px 8px;
+            display: inline-block;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        /* 顶部预设状态栏 */
+        .status-banner {
+            text-align: center;
+            margin: 0 0 1rem;
+            padding: 0.6rem 1rem;
+            background: #e9f5ff;
+            border: 1px solid #b3e0ff;
+            color: #055160;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        .status-banner.flash {
+            animation: statusFlash 0.9s ease;
+        }
+        @keyframes statusFlash {
+            0% { box-shadow: 0 0 0 0 rgba(0,123,255,0.45); }
+            100% { box-shadow: 0 0 0 0 rgba(0,123,255,0); }
+        }
+
+        /* Toast 提示 */
+        .toast-container {
+            position: fixed;
+            top: 1.2rem;
+            right: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        .toast-message {
+            min-width: 240px;
+            max-width: 380px;
+            background: rgba(0,0,0,0.82);
+            color: #fff;
+            font-size: 0.85rem;
+            line-height: 1.3;
+            padding: 0.7rem 1rem 0.65rem;
+            border-radius: 6px;
+            box-shadow: 0 6px 16px -4px rgba(0,0,0,0.4);
+            backdrop-filter: blur(4px);
+            font-weight: 500;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            opacity: 0;
+            transform: translateY(-6px) scale(.98);
+            animation: toastFadeIn .35s ease forwards, toastFadeOut .4s ease forwards 3.2s;
+        }
+        .toast-message.success { border-left: 4px solid #28a745; }
+        .toast-icon {
+            font-size: 1rem;
+            line-height: 1;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        @keyframes toastFadeIn {
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes toastFadeOut {
+            to { opacity: 0; transform: translateY(-6px) scale(.98); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    <h1>AI 对话风格调优器 (AI Conversation Style Tuner)</h1>
+    <div id="presetStatus" class="status-banner" role="status" aria-live="polite">未选择预设 (No preset selected)</div>
+    <div id="toastRoot" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+    <div id="sliders-grid" class="sliders-grid">
+        <!-- Sliders will be dynamically inserted here -->
+    </div>
+    
+    <div class="actions">
+        <button id="copyButton">生成并复制 YAML (Copy YAML)</button>
+        <span id="copyMessage">已复制! (Copied!)</span>
+    </div>
+
+    <div class="presets">
+        <button class="preset-button" id="presetProMinimal">专业极简 (Pro Minimal)</button>
+        <button class="preset-button" id="presetFriendly">友好助理 (Friendly Assistant)</button>
+        <button class="preset-button" id="presetAcademic">学术审稿 (Academic Review)</button>
+        <!-- 新增 Persona 预设 -->
+        <button class="preset-button" id="presetProfessional">专业 (Professional)</button>
+        <button class="preset-button" id="presetEfficient">高效 (Efficient)</button>
+        <button class="preset-button" id="presetFriendlyPersona">友好 (Friendly)</button>
+        <button class="preset-button" id="presetCandid">直率 (Candid)</button>
+        <button class="preset-button" id="presetQuirky">好玩 (Quirky)</button>
+        <button class="preset-button" id="presetNerdy">技术向 (Nerdy)</button>
+        <button class="preset-button" id="presetCynical">怀疑 (Cynical)</button>
+    </div>
+
+    <div id="extraPromptsSection" class="extra-prompts-section">
+        <h3>附加提示词模块 (Extra Prompts)（可为各维度选择附加指令）</h3>
+        <p style="font-size:0.72rem;color:#555;margin-top:-0.5rem;margin-bottom:0.9rem;">带<span class="exclusive-tag">EX</span>的为互斥 (exclusive) 项：同一维度仅允许选一个；其余可多选。选择结果将附加到 YAML 对应维度下 (Appended to YAML).</p>
+        <div id="extraPromptsContainer"></div>
+    </div>
+
+    <h2>结果预览 (Preview)</h2>
+    <pre id="yamlOutput"></pre>
+    <details style="margin-top: 0.75rem; border: 1px solid #eee; border-radius: 8px; padding: 0.6rem 0.8rem; background: #fafafa;">
+        <summary style="cursor: pointer; font-weight: 600; color: #333;">说明：使用方式与后续处理 (How to Use)</summary>
+        <div style="font-size: 0.9rem; color: #444; line-height: 1.6; margin-top: 0.5rem;">
+            <p style="margin: 0.2rem 0 0.6rem;">本工具用于配置对话风格与行为准则，生成可复用的 YAML 片段，作为系统提示或配置片段使用。</p>
+            <ol style="padding-left: 1.2rem; margin: 0 0 0.6rem;">
+                <li>在上方选择预设或逐项调整各维度，生成 YAML。</li>
+                <li>点击“生成并复制 YAML”，后处理推荐两种方式：
+                    <ul style="margin: 0.3rem 0 0.2rem 1.2rem; list-style: disc;">
+                        <li>用 Claude / GPT 的“提示优化”能力，将 YAML 转为连续说明文本；</li>
+                        <li>或直接让 AI 将 YAML 转写为连续说明文本，然后人工微调。</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+    </details>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dimensionsData = [
+        { id: 'affirmation', category: 'stance', name: '1. 肯定/阿谀强度（Affirmation/Sycophancy）', descriptions: [
+            '从不恭维，只做事实性确认',
+            '极少恭维，仅在必要时正面确认',
+            '中性强化，适度肯定',
+            '偶尔中性强化',
+            '较多使用正面夸赞',
+            '频繁正向夸赞与迎合（如“你说得对！”默认开场）'
+        ] },
+        { id: 'pushback', category: 'stance', name: '2. 反驳/挑战力度（Pushback/Rigor）', descriptions: [
+            '不挑战用户假设',
+            '仅在明显矛盾时提醒',
+            '在关键处提示并提出温和疑问',
+            '重大问题时提醒',
+            '主动提供对立观点',
+            '系统性质询前提，并提供替代框架'
+        ] },
+        { id: 'verbosity', category: 'structure', name: '3. 冗长度/简洁度（Verbosity）', descriptions: [
+            '极简要点（一句话）',
+            '简短要点+一句说明',
+            '精炼段落，少量展开',
+            '简洁段落',
+            '详细铺陈',
+            '详细铺陈与长前言'
+        ] },
+        { id: 'directness', category: 'stance', name: '4. 直接性 vs 委婉度（Directness vs Hedging）', descriptions: [
+            '极度委婉，常用缓冲语',
+            '比较委婉',
+            '较为直接但保留缓冲',
+            '直接为主，偶有缓冲',
+            '明显直接，基本不绕弯',
+            '直截了当，少情绪修饰'
+        ] },
+        { id: 'empathy', category: 'affective', name: '5. 情绪共情/情感验证（Empathy/Validation）', descriptions: [
+            '冷静中立，无情感表达',
+            '轻微情感暗示',
+            '温和共情',
+            '适度共情',
+            '明显情感认同',
+            '明显情感认同与安抚'
+        ] },
+        { id: 'enthusiasm', category: 'affective', name: '6. 热情/能量（Enthusiasm/Energy）', descriptions: [
+            '平实，无情绪波动',
+            '略带积极',
+            '积极但克制',
+            '适度积极',
+            '热情洋溢',
+            '高能量、夸张兴奋（如“Heck yes!”）'
+        ] },
+        { id: 'apology', category: 'affective', name: '7. 道歉频率（Apology Frequency）', descriptions: [
+            '仅在必要时致歉',
+            '仅在确认错误时道歉',
+            '必要时礼貌性道歉',
+            '偶发礼貌性道歉',
+            '较频繁地道歉',
+            '频繁使用道歉作为填充话术'
+        ] },
+        { id: 'uncertainty', category: 'epistemic', name: '8. 不确定性披露（Uncertainty Disclosure）', descriptions: [
+            '很少表露不确定性',
+            '暗示不确定性',
+            '在重要点提示置信度',
+            '在关键点提示置信度',
+            '主动说明信息边界并标注假设',
+            '系统性标注假设、边界与置信区间'
+        ] },
+        { id: 'evidence', category: 'epistemic', name: '9. 证据/引用严格度（Evidence/Citation Strictness）', descriptions: [
+            '很少引用',
+            '偶尔引用',
+            '关键结论时引用',
+            '重要结论时引用',
+            '多数事实断言给出处',
+            '几乎所有事实断言都给来源/链接'
+        ] },
+        { id: 'critique', category: 'quality', name: '10. 批评直白度（Bluntness of Critique）', descriptions: [
+            '委婉规避负面评价',
+            '间接提出改进建议',
+            '温和直言，尽量保留礼貌',
+            '兼顾礼貌与直言',
+            '直接指出问题',
+            '直接指出“错误/不佳做法”，不加修饰'
+        ] },
+        { id: 'creativity', category: 'style', name: '11. 创造性 vs 严谨性（Creativity vs Precision）', descriptions: [
+            '严守既有规范，不发散',
+            '轻度发散',
+            '适度发散，严格对齐事实',
+            '适度发散但对齐事实',
+            '鼓励创造性联想',
+            '高创造性，积极重构问题'
+        ] },
+        { id: 'jargon', category: 'epistemic', name: '12. 技术深度/行话密度（Technical Depth/Jargon）', descriptions: [
+            '面向初学者解释',
+            '使用少量专业术语',
+            '专业但尽量通俗',
+            '专业但可读',
+            '使用较多行业术语',
+            '深度技术细节与术语密集'
+        ] },
+        { id: 'structuredness', category: 'structure', name: '13. 结构化程度（Structuredness）', descriptions: [
+            '自由叙述',
+            '段落清晰',
+            '轻度分点/步骤',
+            '适度分点/步骤',
+            '严格要点-步骤-清单',
+            '严格要点-步骤-清单，模板化输出'
+        ] },
+        { id: 'proactivity', category: 'directive', name: '14. 主动性/代办倾向（Proactivity vs Deference）', descriptions: [
+            '等待明确指令',
+            '在简单任务上少量预判',
+            '在范围明确时主动提出建议',
+            '轻微前置判断',
+            '主动提出多个方案',
+            '主动提出方案并推进'
+        ] },
+        { id: 'clarification', category: 'structure', name: '15. 澄清提问密度（Clarifying Questions Density）', descriptions: [
+            '少问，直接回答',
+            '很少追问',
+            '在明显歧义时追问',
+            '关键歧义时追问',
+            '倾向于提问以明确需求',
+            '系统性提问来界定需求'
+        ] },
+        { id: 'safety', category: 'safety', name: '16. 风险规避/安全保守度（Safety Conservatism）', descriptions: [
+            '大胆给出建议',
+            '附带轻微风险提示',
+            '兼顾风险与可行性',
+            '平衡风险与建议',
+            '强调潜在风险并给出替代方案',
+            '高度谨慎，倾向转介与保守建议'
+        ] },
+        { id: 'persona', category: 'style', name: '17. 个性化/人设浓度（Persona/Quirkiness）', descriptions: [
+            '纯工具，无人设',
+            '轻度个性化',
+            '有稳定的人设（低存在感）',
+            '轻度个性标签',
+            '明显角色化',
+            '玩梗式表达，强烈角色扮演'
+        ] },
+        { id: 'praise', category: 'affective', name: '18. 赞美/表扬配额（Praise Budget）', descriptions: [
+            '不主动表扬',
+            '极少表扬',
+            '有证据时适度表扬',
+            '有证据时表扬一次',
+            '倾向于鼓励和赞美',
+            '频繁表扬并叠加形容词'
+        ] },
+        { id: 'scope', category: 'epistemic', name: '19. 变更范围控制（Change Scope Control，面向代码）', descriptions: [
+            // 0–5 从最低必要到最高必要性论证的范围扩张
+            '严格局部：仅执行明确指令的必要改动',
+            '最小伴随：非指明处仅做必要的微小伴随性改动',
+            '受控重构：在明确关联与必要性下适度重构相关模块（最小必要）',
+            '必要延展：在充分理由支撑下做小范围伴随性改动',
+            '收益驱动：有清晰必要性与可观改进证据时倾向较大范围优化',
+            '论证重写：基于充分必要性与收益评估进行大幅重写/重构'
+        ] },
+        { id: 'compliance', category: 'stance', name: '20. 服从提示 vs 质疑提示（Prompt Compliance vs Challenge Prompt）', descriptions: [
+            '完全服从用户框架',
+            '轻微纠正用户误解',
+            '温和地质疑前提并提出澄清',
+            '发现偏差时温和纠偏',
+            '主动重构用户需求或提出替代框架',
+            '经常重构需求并主导对话方向'
+        ] },
+        { id: 'emojiFrequency', category: 'affective', name: '21. 表情符号使用频率（Emoji Usage Frequency）', descriptions: [
+            '从不使用',
+            '仅用户大量使用时镜像一次',
+            '偶发单个且语义相关',
+            '中等频率，不堆叠',
+            '较高频，多处出现，偶有连用',
+            '很高密度，常连用多个表情'
+        ] },
+        { id: 'hypeFiller', category: 'affective', name: '22. 炒作/营销式填充语密度（Hype / Marketing Filler Density）', descriptions: [
+            '无任何炒作或营销腔',
+            '极少轻度积极形容词',
+            '低频少量增色形容不堆砌',
+            '中等段首尾增强语气词',
+            '高频，多处使用煽动性修饰',
+            '过度营销腔影响客观'
+        ] },
+        { id: 'toneMirroring', category: 'stance', name: '23. 镜像用户语气/措辞程度（User Tone Mirroring）', descriptions: [
+            '完全不镜像语气',
+            '仅技术术语对齐不复制语气',
+            '适度镜像关键用词忽略情绪',
+            '中等镜像部分情绪与节奏',
+            '强镜像句式与情绪高度对齐',
+            '过度镜像，频繁复刻对方措辞与情绪'
+        ] },
+        { id: 'closingFormalities', category: 'affective', name: '24. 结束语/收尾礼节强度（Closing Formalities / Sign-off）', descriptions: [
+            '无收尾直接结束',
+            '长答复末尾一次中性收尾',
+            '简短功能性收尾',
+            '常规礼貌收尾，多数回答包含',
+            '频繁礼貌并邀请继续互动',
+            '冗长多层次感谢与邀请'
+        ] },
+        { id: 'memoryReferencing', category: 'structure', name: '25. 会话记忆引用策略（Conversation Memory Referencing）', descriptions: [
+            '不引用前文',
+            '仅用户提及时最小引用',
+            '关键连续性时精炼引用一次',
+            '主动总结前文要点承接',
+            '结构化回顾，交叉多个历史点',
+            '系统性线程追踪持续整合'
+        ] },
+        { id: 'orthography', category: 'style', name: '26. 大小写与正字法风格偏离度（Orthography / Casing Stylization）', descriptions: [
+            '标准大小写规范',
+            '偶发单词全大写强调',
+            '适度非标准少量全小写',
+            '全文统一非标准风格',
+            '广泛大小写变化强调语气',
+            '强烈风格化影响可读性'
+        ] },
+        { id: 'slangPuns', category: 'style', name: '27. 缩写/俚语/双关使用度（Abbreviations & Slang & Puns）', descriptions: [
+            '无缩写俚语双关',
+            '极少技术缩写',
+            '常见通用缩写无俚语',
+            '偶发轻度俚语或双关',
+            '多次俚语与双关风格显著',
+            '高密度俚语双关影响清晰'
+        ] },
+        { id: 'policyTransparency', category: 'safety', name: '28. 政策与限制透明度（Policy / Limitation Transparency）', descriptions: [
+            '最少披露仅拒绝',
+            '简短说明原因不列规则',
+            '涉及限制概述核心政策',
+            '主动标注政策类别与原因',
+            '结构化列出相关政策条目',
+            '系统性分层分析与合规替代'
+        ] },
+        { id: 'lowQualityDiagnostic', category: 'quality', name: '29. 低质量请求诊断深度（Low-Quality Request Diagnostic Depth）', descriptions: [
+            '不诊断直接答',
+            '指出单一缺失点',
+            '列2-3需澄清要素与模板',
+            '系统分解结构与缺口',
+            '重构版本加多重方案',
+            '全面质量审核矩阵与重写'
+        ] },
+        { id: 'qualityToneStrictness', category: 'quality', name: '30. 低质量请求语气介入强度（Quality Tone Intervention Strictness）', descriptions: [
+            '语气完全中性不评价',
+            '轻柔提示可改进',
+            '直接说明问题保持礼貌',
+            '强调改进必要语气略严肃',
+            '严格门槛语气明显强硬',
+            '强硬把关，要求先补全信息'
+        ] },
+        { id: 'culturalAdaptation', category: 'style', name: '31. 文化/地域感性匹配度（Cultural / Regional Sensibility Adaptation）', descriptions: [
+            '纯通用不调整',
+            '明确声明时最小适配',
+            '采用相关示例与单位',
+            '主动使用文化惯例辅助说明',
+            '一致嵌入文化语境线索',
+            '高度本地化隐喻与参照'
+        ] },
+        { id: 'ctaFrequency', category: 'directive', name: '32. 行动号召频率（Call-To-Action Frequency）', descriptions: [
+            '禁止任何行动号召',
+            '仅必要场景一次',
+            '偶发单一步骤建议',
+            '常规结尾含后续步骤',
+            '多条行动清单含优先级',
+            '频繁敦促执行与跟进'
+        ] },
+        { id: 'motivationSuppression', category: 'directive', name: '33. 激励性语言抑制度（Motivational Language Suppression）', descriptions: [
+            '完全抑制无鼓励',
+            '极少鼓励仅成就时',
+            '偶发中性鼓励',
+            '适度积极强化',
+            '高频鼓舞性词汇',
+            '过度热血励志包装'
+        ] },
+        { id: 'autonomyEnablement', category: 'directive', name: '34. 用户自主与自给度促进（User Autonomy Enablement）', descriptions: [
+            '直接答案不强调自主',
+            '答案加单一验证方法',
+            '多路径比较鼓励选择',
+            '引导用户推导关键一步',
+            '教学式拆解含自测提示',
+            '练习框架促进完全自给'
+        ] },
+        { id: 'selfCritique', category: 'quality', name: '35. 信息质量自我批判力度（Self-Critique / Epistemic Humility）', descriptions: [
+            '不自我批判',
+            '不确定时说可能',
+            '关键处标注假设误差',
+            '列替代观点与局限',
+            '系统性风险盲点剖析',
+            '严格置信度与弱点详述'
+        ] },
+        { id: 'styleEmulation', category: 'style', name: '36. 外部人格/特定风格模拟强度（External Persona / Style Emulation）', descriptions: [
+            '不模拟外部风格',
+            '明确要求时一次性切换',
+            '轻度注入若干风格元素',
+            '保持主语气可控模拟',
+            '高度对齐特定人格特征',
+            '深度沉浸式角色化'
+        ] },
+        { id: 'rejectionDepth', category: 'safety', name: '37. 拒绝与限制解释深度（Rejection Explanation Depth）', descriptions: [
+            '简单拒绝无解释',
+            '一句原因',
+            '原因加允许范围替代',
+            '原因加风险与替代步骤',
+            '结构化原因风险替代',
+            '全面政策映射多层方案'
+        ] },
+        { id: 'sarcasmLevel', category: 'affective', name: '38. 讽刺/不屑语气等级（Sarcasm / Dismissiveness Level）', descriptions: [
+            '无讽刺与不屑',
+            '极偶发、轻微揶揄暗示',
+            '适度冷静批评质量',
+            '直接生硬语气',
+            '明显讽刺不屑纠偏',
+            '高频讽刺影响礼貌'
+        ] }
+        ,
+        { id: 'intentRecognition', category: 'interpretation', name: '39. 意图识别自信度（Intent Recognition Assertiveness）', descriptions: [
+            '不主动推断用户意图，缺失时等待补充',
+            '倾向先请求澄清后再回答',
+            '上下文充分时直接推断，否则请求一次澄清',
+            '多数情况下采用最高概率意图，冲突时澄清',
+            '默认使用最高概率意图，仅极端矛盾时澄清',
+            '始终依据最高概率意图直接回答，不追加澄清'
+        ] },
+        { id: 'intentClarification', category: 'interpretation', name: '40. 意图澄清循环深度（Intent Clarification Loop Depth）', descriptions: [
+            '不追加澄清问题，直接给出答案',
+            '仅高风险或不完整时简短澄清一次',
+            '遇到明显歧义时提出一次澄清问题',
+            '出现歧义会补充背景或追问一次后再答',
+            '经常通过多轮澄清补充上下文再回答',
+            '系统性多轮追问、整理上下文后才给答案'
+        ] }
+    ];
+    // 正交分类元数据：每个维度只归属一个主类别
+    const categories = [
+        { id: 'stance', name: '交互立场与对齐/挑战', dimensions: ['affirmation','pushback','compliance','toneMirroring','directness'] },
+        { id: 'structure', name: '结构与信息组织', dimensions: ['verbosity','structuredness','memoryReferencing','clarification'] },
+        { id: 'affective', name: '情感与语气表达', dimensions: ['empathy','enthusiasm','apology','emojiFrequency','hypeFiller','sarcasmLevel','closingFormalities','praise'] },
+        { id: 'directive', name: '引导与激励/自主', dimensions: ['ctaFrequency','autonomyEnablement','motivationSuppression','proactivity'] },
+        { id: 'quality', name: '质量批判与请求治理', dimensions: ['critique','lowQualityDiagnostic','qualityToneStrictness','selfCritique'] },
+        { id: 'style', name: '创造与风格适配', dimensions: ['creativity','persona','styleEmulation','orthography','slangPuns','culturalAdaptation'] },
+        { id: 'safety', name: '安全与合规透明', dimensions: ['safety','policyTransparency','rejectionDepth'] },
+        { id: 'epistemic', name: '技术与认知严谨度', dimensions: ['uncertainty','evidence','jargon','scope'] },
+        { id: 'interpretation', name: '意图识别与澄清', dimensions: ['intentRecognition','intentClarification'] }
+    ];
+
+    const slidersGrid = document.getElementById('sliders-grid');
+    const copyButton = document.getElementById('copyButton');
+    const copyMessage = document.getElementById('copyMessage');
+    const yamlOutput = document.getElementById('yamlOutput');
+    const presetProMinimalBtn = document.getElementById('presetProMinimal');
+    const presetFriendlyBtn = document.getElementById('presetFriendly');
+    const presetAcademicBtn = document.getElementById('presetAcademic');
+    // 新增 Persona 预设按钮引用
+    const presetProfessionalBtn = document.getElementById('presetProfessional');
+    const presetEfficientBtn = document.getElementById('presetEfficient');
+    const presetFriendlyPersonaBtn = document.getElementById('presetFriendlyPersona');
+    const presetCandidBtn = document.getElementById('presetCandid');
+    const presetQuirkyBtn = document.getElementById('presetQuirky');
+    const presetNerdyBtn = document.getElementById('presetNerdy');
+    const presetCynicalBtn = document.getElementById('presetCynical');
+
+    let isBatchUpdating = false; // 防止联动时递归
+
+    // 强负相关配置：互补为 5 - x
+    // 已存在 affirmation ↔ pushback，另新增推荐的强负相关最小集合
+    const invertPairs = [
+        ['affirmation','pushback'],
+        ['praise','critique'],
+        ['enthusiasm','motivationSuppression'],
+        ['empathy','sarcasmLevel'],
+        ['emojiFrequency','motivationSuppression']
+    ];
+
+    // 附加提示词配置：每个维度数组元素 {id,text,exclusive,trans_chi}
+    // 示例加入用户提供的长提示词（归为lowQualityDiagnostic），以及若干简短模板。
+    const extraPrompts = {
+        lowQualityDiagnostic: [
+            { id: 'cleanup_news_article', exclusive: true, text: 'Clean and return article only; remove AI drafting artifacts; end with ==END OF ARTICLE== delimiter.', trans_chi: '仅清理并返回文章正文；移除 AI 起草痕迹；以 ==END OF ARTICLE== 作为结束标记。' },
+            { id: 'structured_gap_analysis', exclusive: false, text: 'Provide a concise gap analysis list before answering.', trans_chi: '在回答前先给出简明差距分析清单。' },
+            { id: 'request_clarification_block', exclusive: false, text: 'If input under-specified, prepend a “Clarification Needed” block.', trans_chi: '若输入信息不足，在前面加上“需要澄清”区块。' }
+        ],
+        critique: [
+            { id: 'no_empty_praise', exclusive: false, text: 'Avoid empty praise; focus on actionable critique.', trans_chi: '避免空洞夸赞；聚焦可执行的改进意见。' },
+            { id: 'severity_tags', exclusive: false, text: 'Tag issues with severity: [Minor|Major|Critical].', trans_chi: '给问题加严重程度标签：[Minor|Major|Critical]。' }
+        ],
+        evidence: [
+            { id: 'add_sources', exclusive: false, text: 'Append 2–4 authoritative sources (APA short form).', trans_chi: '在末尾附上 2–4 个权威来源（APA 简短格式）。' },
+            { id: 'mark_uncertain', exclusive: false, text: 'Mark any uncertain claim with (?) suffix.', trans_chi: '对不确定的断言添加 (?) 标记。' }
+        ],
+        scope: [
+            { id: 'limit_refactor', exclusive: true, text: 'Do not refactor beyond explicitly instructed regions.', trans_chi: '不要在明确指示区域之外进行重构。' },
+            { id: 'suggest_safe_extension', exclusive: false, text: 'After main changes, list optional safe extensions.', trans_chi: '完成主要修改后，列出可选且安全的扩展项。' }
+        ],
+        affirmation: [
+            { id: 'avoid_syco', exclusive: true, text: 'Avoid sycophancy; no generic agreements like “你说得对”.', trans_chi: '避免阿谀；不要使用“你说得对”等通用性认同。' },
+            { id: 'anti_syco_objective', exclusive: true, text: 'Maintain strictly objective, analytical tone; no motivational or flattering language; avoid rhetorical flourishes.', trans_chi: '严格保持客观、分析性的语气；避免励志或奉承语言；不使用修辞性辞藻。' },
+            { id: 'ban_phrase_absolutely_right', exclusive: false, text: 'Never use the phrase “You’re absolutely right.”', trans_chi: '不要使用短语“You’re absolutely right.”。' }
+        ],
+        pushback: [
+            { id: 'assumption_check', exclusive: false, text: 'List 1–3 key assumptions and challenge them.', trans_chi: '列出 1–3 个关键假设并提出挑战。' }
+        ],
+        motivationSuppression: [
+            { id: 'no_hype', exclusive: true, text: 'Suppress motivational or hype filler completely.', trans_chi: '完全抑制鼓动式/炒作式语言。' },
+            { id: 'absolute_mode_suppress', exclusive: true, text: 'Absolute mode: disable engagement boosters; no emojis/filler/hype; no questions/offers/suggestions; end immediately after info.', trans_chi: '绝对模式：禁用提升参与度的措辞；不使用表情/填充/炒作；不提问题/建议/邀请；在提供信息后立即结束。' }
+        ],
+        emojiFrequency: [
+            { id: 'eliminate_emojis', exclusive: true, text: 'Eliminate emojis completely.', trans_chi: '完全不使用表情符号。' }
+        ],
+        hypeFiller: [
+            { id: 'eliminate_hype_filler', exclusive: true, text: 'Eliminate hype, filler, and marketing phrasing.', trans_chi: '去除炒作、填充和营销式措辞。' }
+        ],
+        ctaFrequency: [
+            { id: 'ban_call_to_action', exclusive: true, text: 'Do not offer any calls to action.', trans_chi: '不要提供任何行动号召。' }
+        ],
+        toneMirroring: [
+            { id: 'never_mirror', exclusive: true, text: 'Never mirror user’s diction, mood, or affect.', trans_chi: '不要镜像用户的用词、情绪或语气。' }
+        ],
+        closingFormalities: [
+            { id: 'no_closure', exclusive: false, text: 'No closings or sign-offs; terminate after delivering info.', trans_chi: '不添加结束语或署名；提供完信息即结束。' },
+            { id: 'no_closure', exclusive: false, text: 'Disable engagement hooks or continuation prompts; end cleanly with no follow-ups.', trans_chi: '禁用主动引导技术, Engagement Hook , Continuation Prompt, 干净的结束对话。' }
+        ],
+        memoryReferencing: [
+            { id: 'no_memory', exclusive: true, text: 'Do not reference prior memory or records.', trans_chi: '不要引用先前的记忆或记录。' }
+        ],
+        directness: [
+            { id: 'efficient_style', exclusive: false, text: 'Efficient style: concise when appropriate, more when necessary; avoid cliches and fluff.', trans_chi: '高效风格：该简则简，该详则详；避免陈词滥调与废话。' },
+            { id: 'blunt_priority', exclusive: false, text: 'Prioritize blunt, directive phrasing over tone-matching.', trans_chi: '优先使用直截了当的指令式表述，而非语气匹配。' }
+        ],
+        jargon: [
+            { id: 'plain_language', exclusive: false, text: 'Prefer plain language; replace jargon with clear phrasing (e.g., “Runs each agent in its own Docker container”).', trans_chi: '优先使用通俗语言；用清晰表述替代行话（例如：“每个代理在独立的 Docker 容器中运行”）。' }
+        ],
+        policyTransparency: [
+            { id: 'name_policy_blocks', exclusive: false, text: 'If content is restricted, state the policy category and a brief reason.', trans_chi: '如内容受限，注明政策类别并给出简要原因。' }
+        ],
+        autonomyEnablement: [
+            { id: 'self_test', exclusive: false, text: 'Offer a quick self-test (3 questions) for user validation.', trans_chi: '提供 3 个快速自测问题，供用户验证。' }
+        ],
+        structuredness: [
+            { id: 'compactness_rules', exclusive: false, text: 'Enforce compact answers; avoid long prefaces; minimal code snippets and no large dumps.', trans_chi: '强制紧凑回答；避免冗长前言；代码片段最少且不做大段输出。' }
+        ],
+        verbosity: [
+            { id: 'crisp_by_default', exclusive: false, text: 'Default to crisp, purpose-driven replies; trim anything not moving work forward.', trans_chi: '默认简洁、目标导向的回答；删除一切无助推进的内容。' }
+        ]
+    };
+
+    // 已选择的附加提示词，结构 { dimensionId: Set<promptId> }
+    const selectedExtraPrompts = {};
+
+    function toggleExtraPrompt(dimensionId, promptId, exclusive) {
+        if (!selectedExtraPrompts[dimensionId]) selectedExtraPrompts[dimensionId] = new Set();
+        const set = selectedExtraPrompts[dimensionId];
+        if (exclusive) {
+            // 清空再加入
+            set.clear();
+            set.add(promptId);
+        } else {
+            if (set.has(promptId)) {
+                set.delete(promptId);
+            } else {
+                // 若已有互斥项，移除它
+                const configList = extraPrompts[dimensionId] || [];
+                const exclusiveIds = configList.filter(p => p.exclusive).map(p => p.id);
+                exclusiveIds.forEach(id => set.delete(id));
+                set.add(promptId);
+            }
+        }
+        // 更新对应维度标题后方的“已选”徽标数量显示（可选）
+        updateSelectedBadge(dimensionId);
+        updateYamlOutput();
+    }
+
+    function updateSelectedBadge(dimensionId) {
+        const count = selectedExtraPrompts[dimensionId] ? selectedExtraPrompts[dimensionId].size : 0;
+        const labelEl = document.querySelector(`label[for="${dimensionId}-slider"]`);
+        if (!labelEl) return;
+        let badge = labelEl.querySelector('.prompt-selected-badge');
+        if (count === 0) {
+            if (badge) badge.remove();
+            return;
+        }
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'prompt-selected-badge';
+            labelEl.appendChild(badge);
+        }
+        badge.textContent = `+${count}`;
+        badge.title = '选中附加提示词数量';
+    }
+
+    function renderExtraPrompts() {
+        const container = document.getElementById('extraPromptsContainer');
+        if (!container) return;
+        Object.entries(extraPrompts).forEach(([dimId, list]) => {
+            const dim = getDim(dimId);
+            if (!dim) return;
+            const block = document.createElement('div');
+            block.className = 'extra-dimension-block';
+            block.setAttribute('data-extra-dim', dim.id);
+            const cleanName = dim.name.replace(/^[0-9]+\.\s*/, '');
+            block.innerHTML = `<div class=\"extra-dimension-title\">${cleanName}</div>`;
+            const ul = document.createElement('div');
+            ul.className = 'extra-prompts-list';
+            list.forEach(p => {
+                const id = `${dimId}__${p.id}`;
+                const exTag = p.exclusive ? '<span class="exclusive-tag" title="互斥项">EX</span>' : '';
+                const label = document.createElement('label');
+                const trans = p.trans_chi ? `<div class="extra-prompt-translation">${p.trans_chi}</div>` : '';
+                label.innerHTML = `<input data-dimension="${dimId}" data-exclusive="${p.exclusive? '1':'0'}" type="checkbox" id="${id}"> ${p.text} ${exTag}${trans}`;
+                ul.appendChild(label);
+            });
+            block.appendChild(ul);
+            container.appendChild(block);
+        });
+        // 事件委托
+        container.addEventListener('change', e => {
+            const target = e.target;
+            if (target && target.matches('input[type="checkbox"][data-dimension]')) {
+                const dimId = target.getAttribute('data-dimension');
+                const exclusive = target.getAttribute('data-exclusive') === '1';
+                const promptId = target.id.split('__')[1];
+                // 在任何状态变更前，记录是否已有非互斥项被选中（用于决定是否显示提醒）
+                const cfgListBefore = extraPrompts[dimId] || [];
+                const prevSelSet = selectedExtraPrompts[dimId] || new Set();
+                const hadNonExclusiveBefore = cfgListBefore.some(p => !p.exclusive && prevSelSet.has(p.id));
+                if (exclusive) {
+                    // 取消同维度其他选中
+                    const peers = container.querySelectorAll(`input[data-dimension="${dimId}"]`);
+                    peers.forEach(cb => {
+                        if (cb !== target) cb.checked = false;
+                    });
+                }
+                if (!target.checked) {
+                    // 取消勾选
+                    if (selectedExtraPrompts[dimId]) {
+                        selectedExtraPrompts[dimId].delete(promptId);
+                        updateSelectedBadge(dimId);
+                        updateYamlOutput();
+                    }
+                } else {
+                    if (!exclusive) {
+                        // 若选择非互斥，需取消同维度已选的互斥项并取消其复选框
+                        const peersEx = container.querySelectorAll(`input[data-dimension=\"${dimId}\"][data-exclusive=\"1\"]`);
+                        peersEx.forEach(cb => { cb.checked = false; });
+                        if (selectedExtraPrompts[dimId]) {
+                            const configList = extraPrompts[dimId] || [];
+                            const exclusiveIds = configList.filter(p => p.exclusive).map(p => p.id);
+                            exclusiveIds.forEach(id => selectedExtraPrompts[dimId].delete(id));
+                        }
+                    }
+                    toggleExtraPrompt(dimId, promptId, exclusive);
+                    if (exclusive && hadNonExclusiveBefore) {
+                        showExclusiveNotice(dimId, '该维度先前已有非互斥项，现选择互斥项已取消其他提示词');
+                    }
+                }
+            }
+        });
+    }
+
+    function showExclusiveNotice(dimensionId, text) {
+        const container = document.getElementById('extraPromptsContainer');
+        if (!container) return;
+        const block = container.querySelector(`[data-extra-dim=\"${dimensionId}\"]`);
+        if (!block) return;
+        let tip = block.querySelector('.exclusive-info');
+        if (!tip) {
+            tip = document.createElement('div');
+            tip.className = 'exclusive-info';
+            const titleEl = block.querySelector('.extra-dimension-title');
+            if (titleEl && titleEl.nextSibling) {
+                titleEl.parentNode.insertBefore(tip, titleEl.nextSibling);
+            } else if (titleEl) {
+                titleEl.parentNode.appendChild(tip);
+            } else {
+                block.insertBefore(tip, block.firstChild);
+            }
+        }
+        tip.textContent = text || '该维度选择了互斥项，已取消其他提示词';
+        // 显示并在3秒后淡出移除
+        requestAnimationFrame(() => { tip.style.opacity = '1'; });
+        setTimeout(() => {
+            tip.style.opacity = '0';
+            setTimeout(() => { if (tip && tip.parentNode) tip.parentNode.removeChild(tip); }, 300);
+        }, 3000);
+    }
+
+    // 1. Render all sliders
+    function renderSliders() {
+        categories.forEach(cat => {
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'category-header';
+            headerDiv.textContent = `【${cat.name}】`;
+            slidersGrid.appendChild(headerDiv);
+            cat.dimensions.forEach(id => {
+                const dim = getDim(id);
+                if (!dim) return;
+                // 若该维度属于负相关对，找到配对维度名称用于徽标
+                let peerName = '';
+                invertPairs.forEach(([a,b]) => {
+                    if (a === dim.id) {
+                        const peerDim = getDim(b);
+                        if (peerDim) peerName = peerDim.name.replace(/^[0-9]+\.\s*/, '');
+                    } else if (b === dim.id) {
+                        const peerDim = getDim(a);
+                        if (peerDim) peerName = peerDim.name.replace(/^[0-9]+\.\s*/, '');
+                    }
+                });
+                const badgeSpan = peerName ? `<span class="invert-badge" data-peer="${peerName}" title="强负相关：与『${peerName}』分值互补 (5 - x)"></span>` : '';
+                const controlDiv = document.createElement('div');
+                controlDiv.className = 'dimension-control';
+                controlDiv.innerHTML = `
+                    <div class="dimension-header">
+                        <label for="${dim.id}-slider">${dim.name}${badgeSpan}</label>
+                        <span class="value-display" id="${dim.id}-value">3</span>
+                    </div>
+                    <input type="range" id="${dim.id}-slider" name="${dim.id}" min="0" max="5" value="3" step="1">
+                    <p class="description-text" id="${dim.id}-desc">${dim.descriptions[3]}</p>
+                `;
+                slidersGrid.appendChild(controlDiv);
+            });
+        });
+    }
+
+    // 工具函数
+    function clamp(v, min=0, max=5) { return Math.max(min, Math.min(max, Number(v))); }
+    function getDim(id) { return dimensionsData.find(d => d.id === id); }
+    function getSliderEl(id) { return document.getElementById(`${id}-slider`); }
+    function getValue(id) { return clamp(getSliderEl(id).value); }
+    function updateUIFor(id) {
+        const val = getValue(id);
+        document.getElementById(`${id}-value`).textContent = String(val);
+        const dim = getDim(id);
+        if (dim) {
+            document.getElementById(`${id}-desc`).textContent = dim.descriptions[val];
+        }
+    }
+    function setSliderValue(id, value) {
+        const el = getSliderEl(id);
+        if (!el) return;
+        el.value = clamp(value);
+        updateUIFor(id);
+    }
+
+    // 联动约束：
+    // A) 强负相关：invertPairs 列表互补 5 - 值
+    // B) 冗长度(verbosity) 与 结构化(structuredness) 正相关：差值不超过 1
+    function applyConstraints(changedId) {
+        if (isBatchUpdating) return;
+        isBatchUpdating = true;
+        try {
+            // A) 处理强负相关互补
+            invertPairs.forEach(([a,b]) => {
+                if (changedId === a) {
+                    setSliderValue(b, 5 - getValue(a));
+                } else if (changedId === b) {
+                    setSliderValue(a, 5 - getValue(b));
+                }
+            });
+
+            // B) 正相关差值限制 (只在相关维度变化时检查)
+            if (changedId === 'verbosity' || changedId === 'structuredness') {
+                const v = getValue('verbosity');
+                const s = getValue('structuredness');
+                // 目标：|v - s| ≤ 1
+                if (Math.abs(v - s) > 1) {
+                    // 调整另一方靠近当前值但保持在范围内
+                    if (changedId === 'verbosity') {
+                        // 让 structuredness 向 verbosity 靠近
+                        const targetS = v > s ? v - 1 : v + 1; // 保持差值1
+                        setSliderValue('structuredness', clamp(targetS));
+                    } else {
+                        const targetV = s > v ? s - 1 : s + 1;
+                        setSliderValue('verbosity', clamp(targetV));
+                    }
+                }
+            }
+        } finally {
+            isBatchUpdating = false;
+        }
+    }
+
+    // 全量应用（用于预设加载后校正）
+    function applyAllConstraints() {
+        // 先对所有互补维度施加一次，以保证预设内部一致
+        invertPairs.flat().forEach(id => applyConstraints(id));
+        // 然后校正 verbosity/structuredness
+        ['verbosity','structuredness'].forEach(id => applyConstraints(id));
+    }
+
+    // 选择集：根据 extras 清理并应用附加提示词
+    function clearAllExtraSelections() {
+        Object.keys(selectedExtraPrompts).forEach(k => delete selectedExtraPrompts[k]);
+        const container = document.getElementById('extraPromptsContainer');
+        if (!container) return;
+        const inputs = container.querySelectorAll('input[type="checkbox"][data-dimension]');
+        inputs.forEach(cb => { cb.checked = false; });
+        // 清空徽标
+        Object.keys(extraPrompts).forEach(dimId => updateSelectedBadge(dimId));
+    }
+
+    function setExtraPromptSelections(extras) {
+        clearAllExtraSelections();
+        if (!extras) return;
+        Object.entries(extras).forEach(([dimId, ids]) => {
+            const list = Array.isArray(ids) ? ids : [];
+            list.forEach(pid => {
+                const confList = extraPrompts[dimId] || [];
+                const found = confList.find(p => p.id === pid);
+                const cb = document.getElementById(`${dimId}__${pid}`);
+                if (found && cb) {
+                    cb.checked = true;
+                    toggleExtraPrompt(dimId, pid, !!found.exclusive);
+                }
+            });
+        });
+        updateYamlOutput();
+    }
+
+    // 2. Update display on slider change
+    function handleSliderInput(event) {
+        if (event.target.type === 'range') {
+            const slider = event.target;
+            const dimensionId = slider.name;
+            updateUIFor(dimensionId);
+            applyConstraints(dimensionId);
+            updateYamlOutput();
+        }
+    }
+
+    // 预设
+    const presets = {
+        proMinimal: { // 专业极简：高严谨、低情感、强直达
+            affirmation: 0,
+            pushback: 4,
+            verbosity: 1,
+            directness: 4,
+            empathy: 1,
+            enthusiasm: 1,
+            apology: 1,
+            uncertainty: 4,
+            evidence: 4,
+            critique: 4,
+            creativity: 2,
+            jargon: 4,
+            structuredness: 2,
+            proactivity: 2,
+            clarification: 3,
+            safety: 3,
+            persona: 1,
+            praise: 0,
+            scope: 0,
+            compliance: 2,
+            emojiFrequency: 0,
+            hypeFiller: 0,
+            toneMirroring: 2,
+            closingFormalities: 1,
+            memoryReferencing: 2,
+            orthography: 0,
+            slangPuns: 0,
+            policyTransparency: 2,
+            lowQualityDiagnostic: 4,
+            qualityToneStrictness: 4,
+            culturalAdaptation: 2,
+            ctaFrequency: 2,
+            motivationSuppression: 4,
+            autonomyEnablement: 3,
+            selfCritique: 3,
+            styleEmulation: 0,
+            rejectionDepth: 3,
+            sarcasmLevel: 0,
+            intentRecognition: 4,
+            intentClarification: 2
+        },
+        friendlyAssistant: { // 友好助理：高亲和、适度结构、温和纠偏
+            affirmation: 3,
+            pushback: 2,
+            verbosity: 3,
+            directness: 3,
+            empathy: 4,
+            enthusiasm: 3,
+            apology: 3,
+            uncertainty: 2,
+            evidence: 3,
+            critique: 2,
+            creativity: 3,
+            jargon: 2,
+            structuredness: 3,
+            proactivity: 3,
+            clarification: 3,
+            safety: 3,
+            persona: 3,
+            praise: 3,
+            scope: 2,
+            compliance: 3,
+            emojiFrequency: 3,
+            hypeFiller: 2,
+            toneMirroring: 4,
+            closingFormalities: 4,
+            memoryReferencing: 3,
+            orthography: 0,
+            slangPuns: 2,
+            policyTransparency: 2,
+            lowQualityDiagnostic: 2,
+            qualityToneStrictness: 2,
+            culturalAdaptation: 3,
+            ctaFrequency: 3,
+            motivationSuppression: 1,
+            autonomyEnablement: 3,
+            selfCritique: 2,
+            styleEmulation: 2,
+            rejectionDepth: 2,
+            sarcasmLevel: 1,
+            intentRecognition: 3,
+            intentClarification: 3
+        },
+        academicReview: { // 学术审稿：强质检、强证据、克制情感
+            affirmation: 0,
+            pushback: 5,
+            verbosity: 3,
+            directness: 4,
+            empathy: 1,
+            enthusiasm: 1,
+            apology: 1,
+            uncertainty: 4,
+            evidence: 5,
+            critique: 5,
+            creativity: 2,
+            jargon: 4,
+            structuredness: 4,
+            proactivity: 3,
+            clarification: 5,
+            safety: 4,
+            persona: 2,
+            praise: 0,
+            scope: 2,
+            compliance: 2,
+            emojiFrequency: 0,
+            hypeFiller: 0,
+            toneMirroring: 1,
+            closingFormalities: 1,
+            memoryReferencing: 3,
+            orthography: 0,
+            slangPuns: 0,
+            policyTransparency: 4,
+            lowQualityDiagnostic: 5,
+            qualityToneStrictness: 4,
+            culturalAdaptation: 2,
+            ctaFrequency: 1,
+            motivationSuppression: 4,
+            autonomyEnablement: 3,
+            selfCritique: 4,
+            styleEmulation: 0,
+            rejectionDepth: 4,
+            sarcasmLevel: 1,
+            intentRecognition: 3,
+            intentClarification: 5
+        },
+        // 以下为七个 Persona 预设
+        professionalPersona: {
+            affirmation: 1,
+            pushback: 3,
+            verbosity: 3,
+            directness: 4,
+            empathy: 2,
+            enthusiasm: 1,
+            apology: 2,
+            uncertainty: 3,
+            evidence: 4,
+            critique: 3,
+            creativity: 2,
+            jargon: 4,
+            structuredness: 4,
+            proactivity: 3,
+            clarification: 3,
+            safety: 3,
+            persona: 1,
+            praise: 1,
+            scope: 1,
+            compliance: 3,
+            emojiFrequency: 0,
+            hypeFiller: 0,
+            toneMirroring: 2,
+            closingFormalities: 3,
+            memoryReferencing: 3,
+            orthography: 0,
+            slangPuns: 0,
+            policyTransparency: 3,
+            lowQualityDiagnostic: 3,
+            qualityToneStrictness: 3,
+            culturalAdaptation: 2,
+            ctaFrequency: 2,
+            motivationSuppression: 4,
+            autonomyEnablement: 3,
+            selfCritique: 3,
+            styleEmulation: 0,
+            rejectionDepth: 3,
+            sarcasmLevel: 0,
+            intentRecognition: 4,
+            intentClarification: 3,
+            __extras__: {
+                affirmation: ['anti_syco_objective'],
+                emojiFrequency: ['eliminate_emojis'],
+                hypeFiller: ['eliminate_hype_filler'],
+                directness: ['efficient_style']
+            }
+        },
+        efficientPersona: {
+            affirmation: 1,
+            pushback: 3,
+            verbosity: 1,
+            directness: 5,
+            empathy: 2,
+            enthusiasm: 1,
+            apology: 1,
+            uncertainty: 3,
+            evidence: 3,
+            critique: 4,
+            creativity: 2,
+            jargon: 2,
+            structuredness: 3,
+            proactivity: 3,
+            clarification: 4,
+            safety: 3,
+            persona: 1,
+            praise: 1,
+            scope: 0,
+            compliance: 3,
+            emojiFrequency: 0,
+            hypeFiller: 0,
+            toneMirroring: 3,
+            closingFormalities: 1,
+            memoryReferencing: 2,
+            orthography: 0,
+            slangPuns: 0,
+            policyTransparency: 2,
+            lowQualityDiagnostic: 3,
+            qualityToneStrictness: 4,
+            culturalAdaptation: 2,
+            ctaFrequency: 3,
+            motivationSuppression: 5,
+            autonomyEnablement: 3,
+            selfCritique: 3,
+            styleEmulation: 0,
+            rejectionDepth: 2,
+            sarcasmLevel: 0,
+            intentRecognition: 5,
+            intentClarification: 1,
+            __extras__: {
+                structuredness: ['compactness_rules'],
+                verbosity: ['crisp_by_default'],
+                motivationSuppression: ['no_hype'],
+                emojiFrequency: ['eliminate_emojis'],
+                directness: ['efficient_style'],
+                jargon: ['plain_language']
+            }
+        },
+        friendlyPersona: {
+            affirmation: 3,
+            pushback: 2,
+            verbosity: 3,
+            directness: 3,
+            empathy: 4,
+            enthusiasm: 4,
+            apology: 3,
+            uncertainty: 2,
+            evidence: 2,
+            critique: 2,
+            creativity: 3,
+            jargon: 2,
+            structuredness: 3,
+            proactivity: 3,
+            clarification: 3,
+            safety: 3,
+            persona: 3,
+            praise: 4,
+            scope: 2,
+            compliance: 4,
+            emojiFrequency: 3,
+            hypeFiller: 2,
+            toneMirroring: 4,
+            closingFormalities: 4,
+            memoryReferencing: 3,
+            orthography: 0,
+            slangPuns: 2,
+            policyTransparency: 2,
+            lowQualityDiagnostic: 2,
+            qualityToneStrictness: 2,
+            culturalAdaptation: 3,
+            ctaFrequency: 3,
+            motivationSuppression: 1,
+            autonomyEnablement: 3,
+            selfCritique: 2,
+            styleEmulation: 2,
+            rejectionDepth: 2,
+            sarcasmLevel: 1,
+            intentRecognition: 3,
+            intentClarification: 3
+        },
+        candidPersona: {
+            affirmation: 1,
+            pushback: 4,
+            verbosity: 2,
+            directness: 5,
+            empathy: 2,
+            enthusiasm: 2,
+            apology: 1,
+            uncertainty: 3,
+            evidence: 3,
+            critique: 5,
+            creativity: 2,
+            jargon: 2,
+            structuredness: 3,
+            proactivity: 3,
+            clarification: 3,
+            safety: 3,
+            persona: 2,
+            praise: 1,
+            scope: 1,
+            compliance: 2,
+            emojiFrequency: 0,
+            hypeFiller: 0,
+            toneMirroring: 2,
+            closingFormalities: 1,
+            memoryReferencing: 2,
+            orthography: 0,
+            slangPuns: 1,
+            policyTransparency: 2,
+            lowQualityDiagnostic: 3,
+            qualityToneStrictness: 4,
+            culturalAdaptation: 2,
+            ctaFrequency: 2,
+            motivationSuppression: 4,
+            autonomyEnablement: 2,
+            selfCritique: 3,
+            styleEmulation: 0,
+            rejectionDepth: 3,
+            sarcasmLevel: 1,
+            intentRecognition: 4,
+            intentClarification: 2,
+            __extras__: {
+                critique: ['no_empty_praise','severity_tags'],
+                directness: ['blunt_priority']
+            }
+        },
+        quirkyPersona: {
+            affirmation: 3,
+            pushback: 2,
+            verbosity: 3,
+            directness: 3,
+            empathy: 3,
+            enthusiasm: 5,
+            apology: 2,
+            uncertainty: 2,
+            evidence: 2,
+            critique: 2,
+            creativity: 5,
+            jargon: 2,
+            structuredness: 2,
+            proactivity: 3,
+            clarification: 3,
+            safety: 3,
+            persona: 5,
+            praise: 4,
+            scope: 2,
+            compliance: 3,
+            emojiFrequency: 3,
+            hypeFiller: 2,
+            toneMirroring: 4,
+            closingFormalities: 3,
+            memoryReferencing: 2,
+            orthography: 2,
+            slangPuns: 4,
+            policyTransparency: 2,
+            lowQualityDiagnostic: 2,
+            qualityToneStrictness: 2,
+            culturalAdaptation: 3,
+            ctaFrequency: 3,
+            motivationSuppression: 1,
+            autonomyEnablement: 3,
+            selfCritique: 2,
+            styleEmulation: 3,
+            rejectionDepth: 2,
+            sarcasmLevel: 1,
+            intentRecognition: 3,
+            intentClarification: 3
+        },
+        nerdyPersona: {
+            affirmation: 1,
+            pushback: 3,
+            verbosity: 4,
+            directness: 3,
+            empathy: 1,
+            enthusiasm: 1,
+            apology: 1,
+            uncertainty: 4,
+            evidence: 4,
+            critique: 3,
+            creativity: 2,
+            jargon: 5,
+            structuredness: 4,
+            proactivity: 3,
+            clarification: 4,
+            safety: 4,
+            persona: 2,
+            praise: 1,
+            scope: 2,
+            compliance: 3,
+            emojiFrequency: 0,
+            hypeFiller: 0,
+            toneMirroring: 2,
+            closingFormalities: 2,
+            memoryReferencing: 3,
+            orthography: 0,
+            slangPuns: 0,
+            policyTransparency: 3,
+            lowQualityDiagnostic: 4,
+            qualityToneStrictness: 3,
+            culturalAdaptation: 2,
+            ctaFrequency: 2,
+            motivationSuppression: 4,
+            autonomyEnablement: 3,
+            selfCritique: 4,
+            styleEmulation: 0,
+            rejectionDepth: 3,
+            sarcasmLevel: 0,
+            intentRecognition: 3,
+            intentClarification: 4,
+            __extras__: {
+                evidence: ['add_sources']
+            }
+        },
+        cynicalPersona: {
+            affirmation: 0,
+            pushback: 5,
+            verbosity: 2,
+            directness: 5,
+            empathy: 1,
+            enthusiasm: 1,
+            apology: 1,
+            uncertainty: 4,
+            evidence: 4,
+            critique: 5,
+            creativity: 2,
+            jargon: 3,
+            structuredness: 3,
+            proactivity: 3,
+            clarification: 4,
+            safety: 4,
+            persona: 2,
+            praise: 0,
+            scope: 2,
+            compliance: 2,
+            emojiFrequency: 0,
+            hypeFiller: 0,
+            toneMirroring: 1,
+            closingFormalities: 1,
+            memoryReferencing: 2,
+            orthography: 0,
+            slangPuns: 1,
+            policyTransparency: 3,
+            lowQualityDiagnostic: 4,
+            qualityToneStrictness: 4,
+            culturalAdaptation: 2,
+            ctaFrequency: 2,
+            motivationSuppression: 4,
+            autonomyEnablement: 3,
+            selfCritique: 4,
+            styleEmulation: 0,
+            rejectionDepth: 3,
+            sarcasmLevel: 2,
+            intentRecognition: 4,
+            intentClarification: 3,
+            __extras__: {
+                pushback: ['assumption_check'],
+                affirmation: ['avoid_syco'],
+                evidence: ['mark_uncertain']
+            }
+        }
+    };
+
+    function applyPreset(preset) {
+        const cfg = presets[preset];
+        if (!cfg) return;
+        isBatchUpdating = true;
+        try {
+            const { __extras__, ...values } = cfg;
+            Object.entries(values).forEach(([id, val]) => {
+                setSliderValue(id, val);
+            });
+        } finally {
+            isBatchUpdating = false;
+        }
+        applyAllConstraints();
+        // 应用附加提示词（如有）
+        const extras = cfg.__extras__;
+        if (extras) setExtraPromptSelections(extras); else clearAllExtraSelections();
+        updateYamlOutput();
+        updatePresetStatus(preset);
+        showToast(`已应用预设：${presetDisplayNames[preset] || preset} (Preset applied)`);
+    }
+
+    // 预设显示名（中文(英文)），仅用于UI提示
+    const presetDisplayNames = {
+        proMinimal: '专业极简 (Pro Minimal)',
+        friendlyAssistant: '友好助理 (Friendly Assistant)',
+        academicReview: '学术审稿 (Academic Review)',
+        professionalPersona: '专业 (Professional)',
+        efficientPersona: '高效 (Efficient)',
+        friendlyPersona: '友好 (Friendly)',
+        candidPersona: '直率 (Candid)',
+        quirkyPersona: '好玩 (Quirky)',
+        nerdyPersona: '技术向 (Nerdy)',
+        cynicalPersona: '怀疑 (Cynical)'
+    };
+
+    function updatePresetStatus(presetKey) {
+        const el = document.getElementById('presetStatus');
+        if (!el) return;
+        const name = presetDisplayNames[presetKey] || presetKey;
+        el.textContent = `已应用预设：${name} (Preset applied)`;
+        el.classList.remove('flash');
+        void el.offsetWidth; // 触发重绘以重启动画
+        el.classList.add('flash');
+    }
+
+    // Toast 显示函数
+    function showToast(message, type='success') {
+        const root = document.getElementById('toastRoot');
+        if (!root) return;
+        const div = document.createElement('div');
+        div.className = `toast-message ${type}`;
+        const icon = document.createElement('span');
+        icon.className = 'toast-icon';
+        icon.textContent = type === 'success' ? '✔' : 'ℹ';
+        const textSpan = document.createElement('span');
+        textSpan.textContent = message;
+        div.appendChild(icon);
+        div.appendChild(textSpan);
+        root.appendChild(div);
+        // 自动移除（与动画结束同步，多给一点缓冲）
+        setTimeout(() => {
+            if (div && div.parentNode) div.parentNode.removeChild(div);
+        }, 3800);
+    }
+
+    // 3. Generate YAML string
+    function generateYaml() {
+        let yamlString = '[待优化的提示词 开始]# 你的对话风格\n\n量表统一：0–5 离散档，默认中位值2或3，便于用户微调一到两档即可感知差异。\n\n你的对话风格应满足如下设定（按分组展示）：\n\n';
+        categories.forEach(cat => {
+            yamlString += `- 分组: "${cat.name}"\n`;
+            yamlString += `  id: "${cat.id}"\n`;
+            yamlString += `  维度:\n`;
+            cat.dimensions.forEach(id => {
+                const dim = getDim(id);
+                if (!dim) return;
+                const slider = document.getElementById(`${dim.id}-slider`);
+                if (!slider) return;
+                const score = slider.value;
+                const description = dim.descriptions[score];
+                yamlString += `    - 名称: "${dim.name}"\n`;
+                yamlString += `      分数: ${score}\n`;
+                yamlString += `      值说明: "${description}"\n`;
+                // 附加提示词输出
+                const sel = selectedExtraPrompts[id];
+                if (sel && sel.size > 0) {
+                    const list = Array.from(sel);
+                    yamlString += `      附加提示词:\n`;
+                    list.forEach(pid => {
+                        const confList = extraPrompts[id] || [];
+                        const found = confList.find(p => p.id === pid);
+                        if (found) {
+                            yamlString += `        - id: "${found.id}"\n`;
+                            yamlString += `          text: "${found.text}"\n`;
+                            if (found.trans_chi) {
+                                yamlString += `          trans_chi: "${found.trans_chi}"\n`;
+                            }
+                        }
+                    });
+                }
+            });
+        });
+        yamlString += '\n\n[待优化的提示词 结束]\n\n重写为一段连续书写的提示词(不是结构化写作), 前缀为"你的Voice个性是".\n\n'
+        return yamlString;
+    }
+
+    // 4. Update the preview area
+    function updateYamlOutput() {
+        yamlOutput.textContent = generateYaml();
+    }
+
+    // 5. Copy to clipboard
+    function copyYaml() {
+        const yamlText = generateYaml();
+        navigator.clipboard.writeText(yamlText).then(() => {
+            copyMessage.style.opacity = '1';
+            setTimeout(() => {
+                copyMessage.style.opacity = '0';
+            }, 2000);
+        }).catch(err => {
+            console.error('无法复制文本: ', err);
+            alert('复制失败，请手动复制。');
+        });
+    }
+
+    // Initial setup
+    renderSliders();
+    renderExtraPrompts();
+    updateYamlOutput();
+
+    // Event Listeners
+    slidersGrid.addEventListener('input', handleSliderInput);
+    copyButton.addEventListener('click', copyYaml);
+    if (presetProMinimalBtn) presetProMinimalBtn.addEventListener('click', () => applyPreset('proMinimal'));
+    if (presetFriendlyBtn) presetFriendlyBtn.addEventListener('click', () => applyPreset('friendlyAssistant'));
+    if (presetAcademicBtn) presetAcademicBtn.addEventListener('click', () => applyPreset('academicReview'));
+    // 绑定新增 Persona 预设
+    if (presetProfessionalBtn) presetProfessionalBtn.addEventListener('click', () => applyPreset('professionalPersona'));
+    if (presetEfficientBtn) presetEfficientBtn.addEventListener('click', () => applyPreset('efficientPersona'));
+    if (presetFriendlyPersonaBtn) presetFriendlyPersonaBtn.addEventListener('click', () => applyPreset('friendlyPersona'));
+    if (presetCandidBtn) presetCandidBtn.addEventListener('click', () => applyPreset('candidPersona'));
+    if (presetQuirkyBtn) presetQuirkyBtn.addEventListener('click', () => applyPreset('quirkyPersona'));
+    if (presetNerdyBtn) presetNerdyBtn.addEventListener('click', () => applyPreset('nerdyPersona'));
+    if (presetCynicalBtn) presetCynicalBtn.addEventListener('click', () => applyPreset('cynicalPersona'));
+});
+</script>
+
+</body>
+</html>
