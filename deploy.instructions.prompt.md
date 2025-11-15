@@ -5,7 +5,7 @@ GitHub Pages 发布 Workflow（模板）
 —
 
 发布步骤（原子化）
-- 启用：在仓库 `{ OWNER }/{ REPO }` 的 Settings → Pages，将 Source 设为 `{ PAGES_SOURCE }`（推荐：`GitHub Actions`）。
+- 创建：新建 `scripts/deploy_pages.sh` 脚本（若已存在则跳过）, 一键初始化/提交/创建远端/推送, 后续 `git` 、 `gh` 操作均通过修改该脚本来完成。
 - 创建：新建目录 `.github/workflows/`（若已存在则跳过）。
 - 新建：在 `.github/workflows/{ WORKFLOW_FILE }` 写入下述工作流模板（文件名示例：`pages.yml`）。
 
@@ -57,13 +57,6 @@ jobs:
 ```
 
 - 提交：把上述新增文件加入版本控制并提交到 `{ DEFAULT_BRANCH }`。
-
-```bash
-git add .nojekyll .artifactignore .github/workflows/{ WORKFLOW_FILE } { STATIC_ASSETS } { DOWNLOAD_SAMPLES } index.html
-git commit -m "chore: setup GitHub Pages workflow"
-git push origin { DEFAULT_BRANCH }
-```
-
 - 提醒用户切换：在 GitHub 仓库 `{ OWNER }/{ REPO }` 的 Settings → Pages → Build and deployment，将 Source 修改为 `GitHub Actions`（若已为 `GitHub Actions` 则跳过）。
 - 等待用户回复切换结果：完成上述设置后再继续下一步，以便工作流能够正确部署到 Pages。
 
